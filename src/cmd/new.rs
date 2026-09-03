@@ -165,6 +165,16 @@ fn populate_agents(args: &NewArgs, cfg: &Config, dest: &PathBuf) {
             }
         };
         let target_path = dest.join(&agent.target);
+        if let Some(parent) = target_path.parent() {
+            if let Err(e) = fs::create_dir_all(parent) {
+                eprintln!(
+                    "warning: skipping agent '{}': cannot create {}: {e}",
+                    agent.name,
+                    parent.display()
+                );
+                continue;
+            }
+        }
         let op_result = match link_mode {
             LinkMode::Symlink => std::os::unix::fs::symlink(&source, &target_path),
             LinkMode::Copy => fs::copy(&source, &target_path).map(|_| ()),
