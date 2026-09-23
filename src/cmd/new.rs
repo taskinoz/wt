@@ -3,7 +3,17 @@ use crate::git;
 use crate::prompt;
 use clap::Args;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+#[cfg(unix)]
+fn symlink(source: &Path, target: &Path) -> std::io::Result<()> {
+    std::os::unix::fs::symlink(source, target)
+}
+
+#[cfg(windows)]
+fn symlink(source: &Path, target: &Path) -> std::io::Result<()> {
+    std::os::windows::fs::symlink_file(source, target)
+}
 
 #[derive(Args)]
 pub struct NewArgs {
@@ -183,7 +193,7 @@ pub fn populate_agents(
             }
         }
         let op_result = match link_mode {
-            LinkMode::Symlink => std::os::unix::fs::symlink(&source, &target_path),
+            LinkMode::Symlink => symlink(&source, &target_path),
             LinkMode::Copy => fs::copy(&source, &target_path).map(|_| ()),
         };
         match op_result {

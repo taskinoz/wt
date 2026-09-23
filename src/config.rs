@@ -54,14 +54,20 @@ impl Default for Config {
     }
 }
 
+/// $HOME on unix, %USERPROFILE% on Windows.
+fn home_dir() -> String {
+    std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .expect("neither HOME nor USERPROFILE is set")
+}
+
 pub fn config_path() -> PathBuf {
     if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
         if !xdg.is_empty() {
             return PathBuf::from(xdg).join("wt").join("config.json");
         }
     }
-    let home = std::env::var("HOME").expect("HOME not set");
-    PathBuf::from(home).join(".config").join("wt").join("config.json")
+    PathBuf::from(home_dir()).join(".config").join("wt").join("config.json")
 }
 
 pub fn load() -> io::Result<Option<Config>> {
@@ -88,16 +94,12 @@ pub fn save(cfg: &Config) -> io::Result<()> {
     fs::write(&path, data)
 }
 
-/// Expand a leading `~` to $HOME. Does not touch `~user` forms.
+/// Expand a leading `~` to the home directory. Does not touch `~user` forms.
 pub fn expand_tilde(p: &str) -> PathBuf {
     if let Some(rest) = p.strip_prefix("~/") {
-        if let Ok(home) = std::env::var("HOME") {
-            return Path::new(&home).join(rest);
-        }
+        return Path::new(&home_dir()).join(rest);
     } else if p == "~" {
-        if let Ok(home) = std::env::var("HOME") {
-            return PathBuf::from(home);
-        }
+        return PathBuf::from(home_dir());
     }
     PathBuf::from(p)
 }
