@@ -74,6 +74,33 @@ pub fn worktree_list_raw() -> Result<String, String> {
     Ok(String::from_utf8_lossy(&out.stdout).to_string())
 }
 
+/// Resolves a short worktree folder name (or full path) to its (path, branch),
+/// matching against `git worktree list`. Never matches the main worktree.
+pub fn resolve_worktree(name: &str) -> Result<(PathBuf, Option<String>), String> {
+    let worktrees = worktree_list_parsed()?;
+    let as_path = PathBuf::from(name);
+    let matches: Vec<&(PathBuf, Option<String>)> = worktrees
+        .iter()
+        .skip(1)
+        .filter(|(p, _)| p == &as_path || p.file_name().map(|f| f == name).unwrap_or(false))
+        .collect();
+
+    match matches.as_slice() {
+        [] => Err(format!(
+            "no worktree matches '{name}'\nRun `wt list` to see current worktrees."
+        )),
+        [one] => Ok((*one).clone()),
+        many => {
+            let mut msg = format!("'{name}' matches multiple worktrees:\n");
+            for (p, _) in many {
+                msg.push_str(&format!("  {}\n", p.display()));
+            }
+            msg.push_str("Pass the full path to disambiguate.");
+            Err(msg)
+        }
+    }
+}
+
 /// Returns (path, branch) pairs from `git worktree list --porcelain`.
 pub fn worktree_list_parsed() -> Result<Vec<(PathBuf, Option<String>)>, String> {
     let out = Command::new("git")

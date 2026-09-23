@@ -4,6 +4,7 @@ mod git;
 mod prompt;
 
 use clap::{Parser, Subcommand};
+use cmd::agents::AgentsArgs;
 use cmd::completion::Shell;
 use cmd::config_cmd::ConfigArgs;
 use cmd::new::NewArgs;
@@ -26,6 +27,8 @@ enum Commands {
     List,
     /// Remove a worktree
     Rm(RmArgs),
+    /// Re-run the agent-file picker against an existing worktree
+    Agents(AgentsArgs),
     /// Print a shell completion script
     Completion { shell: Shell },
 }
@@ -37,6 +40,7 @@ fn main() {
         Commands::Config(args) => cmd::config_cmd::run(args),
         Commands::List => cmd::list::run(),
         Commands::Rm(args) => cmd::rm::run(args),
+        Commands::Agents(args) => cmd::agents::run(args),
         Commands::Completion { shell } => cmd::completion::run(shell),
     }
 }

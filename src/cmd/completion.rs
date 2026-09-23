@@ -21,7 +21,7 @@ _wt_complete() {
   prev="${COMP_WORDS[COMP_CWORD-1]}"
 
   if [[ $COMP_CWORD -eq 1 ]]; then
-    COMPREPLY=($(compgen -W "new config list rm completion" -- "$cur"))
+    COMPREPLY=($(compgen -W "new config list rm agents completion" -- "$cur"))
     return
   fi
 
@@ -40,7 +40,7 @@ _wt_complete() {
       branches=$( { git branch --format='%(refname:short)' 2>/dev/null; git branch -r --format='%(refname:short)' 2>/dev/null; } )
       COMPREPLY=($(compgen -W "$branches" -- "$cur"))
       ;;
-    rm)
+    rm|agents)
       local names
       names=$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2}' | tail -n +2 | xargs -I{} basename {})
       COMPREPLY=($(compgen -W "$names" -- "$cur"))
@@ -66,7 +66,7 @@ const ZSH: &str = r#"#compdef wt
 
 _wt() {
   local -a subcmds
-  subcmds=(new config list rm completion)
+  subcmds=(new config list rm agents completion)
 
   if (( CURRENT == 2 )); then
     _describe 'command' subcmds
@@ -77,7 +77,7 @@ _wt() {
     new)
       _wt_new
       ;;
-    rm)
+    rm|agents)
       _wt_rm
       ;;
     config)

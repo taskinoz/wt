@@ -108,7 +108,7 @@ pub fn run(args: NewArgs) {
     }
     println!("Created worktree at {} (branch {})", dest.display(), branch_name);
 
-    populate_agents(&args, &cfg, &dest);
+    populate_agents(&cfg, &dest, &args.agents, args.yes, args.copy, args.link);
 }
 
 /// Returns (branch_name, is_new_branch, from_ref)
@@ -137,15 +137,22 @@ fn derive_short_name(branch: &str) -> String {
     branch.rsplit('/').next().unwrap_or(branch).to_string()
 }
 
-fn populate_agents(args: &NewArgs, cfg: &Config, dest: &PathBuf) {
-    let selected = select_agents(args, cfg);
+pub fn populate_agents(
+    cfg: &Config,
+    dest: &PathBuf,
+    agents_arg: &Option<Vec<String>>,
+    yes: bool,
+    copy: bool,
+    link: bool,
+) {
+    let selected = select_agents(cfg, agents_arg, yes);
     if selected.is_empty() {
         return;
     }
 
-    let link_mode = if args.copy {
+    let link_mode = if copy {
         LinkMode::Copy
-    } else if args.link {
+    } else if link {
         LinkMode::Symlink
     } else {
         cfg.link_mode
@@ -194,12 +201,12 @@ fn populate_agents(args: &NewArgs, cfg: &Config, dest: &PathBuf) {
     }
 }
 
-fn select_agents(args: &NewArgs, cfg: &Config) -> Vec<AgentEntry> {
+fn select_agents(cfg: &Config, agents_arg: &Option<Vec<String>>, yes: bool) -> Vec<AgentEntry> {
     if cfg.agents.is_empty() {
         return Vec::new();
     }
 
-    if let Some(names) = &args.agents {
+    if let Some(names) = agents_arg {
         if names.iter().any(|n| n.eq_ignore_ascii_case("none")) {
             return Vec::new();
         }
@@ -216,7 +223,7 @@ fn select_agents(args: &NewArgs, cfg: &Config) -> Vec<AgentEntry> {
         return out;
     }
 
-    if args.yes {
+    if yes {
         return Vec::new();
     }
 

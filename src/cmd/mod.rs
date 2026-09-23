@@ -1,3 +1,4 @@
+pub mod agents;
 pub mod completion;
 pub mod config_cmd;
 pub mod list;
