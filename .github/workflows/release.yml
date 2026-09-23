@@ -15,15 +15,19 @@ jobs:
             name: macos-x64
           - os: ubuntu-latest
             name: linux-x64
+            ext: ""
+          - os: windows-latest
+            name: windows-x64
+            ext: ".exe"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - run: cargo build --release
-      - run: cp target/release/wt wt-${{ matrix.name }}
+      - run: cp target/release/wt${{ matrix.ext }} wt-${{ matrix.name }}${{ matrix.ext }}
       - uses: actions/upload-artifact@v4
         with:
           name: wt-${{ matrix.name }}
-          path: wt-${{ matrix.name }}
+          path: wt-${{ matrix.name }}${{ matrix.ext }}
 
   release:
     needs: build
