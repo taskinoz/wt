@@ -1,8 +1,8 @@
 [package]
 name = "wt"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "Minimal git worktree helper: fast worktree creation with agent-file pre-population"
+description = "Minimal git worktree helper: fast worktree creation with agent/env-file pre-population"
 
 [[bin]]
 name = "wt"
