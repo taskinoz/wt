@@ -7,6 +7,7 @@ use clap::{Parser, Subcommand};
 use cmd::agents::AgentsArgs;
 use cmd::completion::Shell;
 use cmd::config_cmd::ConfigArgs;
+use cmd::envs::EnvsArgs;
 use cmd::new::NewArgs;
 use cmd::rm::RmArgs;
 
@@ -29,6 +30,8 @@ enum Commands {
     Rm(RmArgs),
     /// Re-run the agent-file picker against an existing worktree
     Agents(AgentsArgs),
+    /// Re-run the env-file picker against an existing worktree
+    Envs(EnvsArgs),
     /// Print a shell completion script
     Completion { shell: Shell },
 }
@@ -41,6 +44,7 @@ fn main() {
         Commands::List => cmd::list::run(),
         Commands::Rm(args) => cmd::rm::run(args),
         Commands::Agents(args) => cmd::agents::run(args),
+        Commands::Envs(args) => cmd::envs::run(args),
         Commands::Completion { shell } => cmd::completion::run(shell),
     }
 }

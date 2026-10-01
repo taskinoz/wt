@@ -34,6 +34,8 @@ pub struct Config {
     pub link_mode: LinkMode,
     #[serde(default)]
     pub agents: Vec<AgentEntry>,
+    #[serde(default)]
+    pub envs: Vec<AgentEntry>,
 }
 
 fn default_worktree_dir() -> String {
@@ -50,6 +52,7 @@ impl Default for Config {
             worktree_dir: default_worktree_dir(),
             link_mode: default_link_mode(),
             agents: Vec::new(),
+            envs: Vec::new(),
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::cmd::new::populate_agents;
+use crate::cmd::new::populate_entries;
 use crate::config;
 use crate::git;
 use clap::Args;
@@ -30,5 +30,5 @@ pub fn run(args: AgentsArgs) {
         }
     };
     let cfg = config::load_or_default();
-    populate_agents(&cfg, &path, &args.agents, false, args.copy, args.link);
+    populate_entries(&cfg, &path, &cfg.agents, "agent", &args.agents, false, args.copy, args.link);
 }

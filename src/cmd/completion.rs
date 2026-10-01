@@ -21,33 +21,33 @@ _wt_complete() {
   prev="${COMP_WORDS[COMP_CWORD-1]}"
 
   if [[ $COMP_CWORD -eq 1 ]]; then
-    COMPREPLY=($(compgen -W "new config list rm agents completion" -- "$cur"))
+    COMPREPLY=($(compgen -W "new config list rm agents envs completion" -- "$cur"))
     return
   fi
 
   case "${COMP_WORDS[1]}" in
     new)
       case "$prev" in
-        -b|--branch|-n|--name|-p|--path|--from|-a|--agents)
+        -b|--branch|-n|--name|-p|--path|--from|-a|--agents|-e|--envs)
           return
           ;;
       esac
       if [[ "$cur" == -* ]]; then
-        COMPREPLY=($(compgen -W "-b --branch -p --path -n --name -a --agents --copy --link -y --yes --from" -- "$cur"))
+        COMPREPLY=($(compgen -W "-b --branch -p --path -n --name -a --agents -e --envs --copy --link -y --yes --from" -- "$cur"))
         return
       fi
       local branches
       branches=$( { git branch --format='%(refname:short)' 2>/dev/null; git branch -r --format='%(refname:short)' 2>/dev/null; } )
       COMPREPLY=($(compgen -W "$branches" -- "$cur"))
       ;;
-    rm|agents)
+    rm|agents|envs)
       local names
       names=$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2}' | tail -n +2 | xargs -I{} basename {})
       COMPREPLY=($(compgen -W "$names" -- "$cur"))
       ;;
     config)
       if [[ $COMP_CWORD -eq 2 ]]; then
-        COMPREPLY=($(compgen -W "show add-agent remove-agent" -- "$cur"))
+        COMPREPLY=($(compgen -W "show add-agent remove-agent add-env remove-env" -- "$cur"))
       fi
       ;;
     completion)
@@ -66,7 +66,7 @@ const ZSH: &str = r#"#compdef wt
 
 _wt() {
   local -a subcmds
-  subcmds=(new config list rm agents completion)
+  subcmds=(new config list rm agents envs completion)
 
   if (( CURRENT == 2 )); then
     _describe 'command' subcmds
@@ -77,13 +77,13 @@ _wt() {
     new)
       _wt_new
       ;;
-    rm|agents)
+    rm|agents|envs)
       _wt_rm
       ;;
     config)
       if (( CURRENT == 3 )); then
         local -a actions
-        actions=(show add-agent remove-agent)
+        actions=(show add-agent remove-agent add-env remove-env)
         _describe 'action' actions
       fi
       ;;
@@ -99,13 +99,13 @@ _wt() {
 
 _wt_new() {
   case ${words[CURRENT-1]} in
-    -b|--branch|-n|--name|-p|--path|--from|-a|--agents)
+    -b|--branch|-n|--name|-p|--path|--from|-a|--agents|-e|--envs)
       return
       ;;
   esac
   if [[ ${words[CURRENT]} == -* ]]; then
     local -a flags
-    flags=(-b --branch -p --path -n --name -a --agents --copy --link -y --yes --from)
+    flags=(-b --branch -p --path -n --name -a --agents -e --envs --copy --link -y --yes --from)
     _describe 'flag' flags
     return
   fi

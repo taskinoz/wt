@@ -42,15 +42,19 @@ pub struct NewArgs {
     #[arg(short = 'a', long, value_delimiter = ',')]
     agents: Option<Vec<String>>,
 
-    /// Copy agent files instead of symlinking (overrides config default)
+    /// Comma-separated env file names to pre-populate, or "all" / "none"
+    #[arg(short = 'e', long, value_delimiter = ',')]
+    envs: Option<Vec<String>>,
+
+    /// Copy agent/env files instead of symlinking (overrides config default)
     #[arg(long, conflicts_with = "link")]
     copy: bool,
 
-    /// Symlink agent files instead of copying (overrides config default)
+    /// Symlink agent/env files instead of copying (overrides config default)
     #[arg(long)]
     link: bool,
 
-    /// Skip interactive prompts (agent selection defaults to none unless -a is given)
+    /// Skip interactive prompts (agent/env selection defaults to none unless -a/-e is given)
     #[arg(short = 'y', long)]
     yes: bool,
 }
@@ -118,7 +122,8 @@ pub fn run(args: NewArgs) {
     }
     println!("Created worktree at {} (branch {})", dest.display(), branch_name);
 
-    populate_agents(&cfg, &dest, &args.agents, args.yes, args.copy, args.link);
+    populate_entries(&cfg, &dest, &cfg.agents, "agent", &args.agents, args.yes, args.copy, args.link);
+    populate_entries(&cfg, &dest, &cfg.envs, "env", &args.envs, args.yes, args.copy, args.link);
 }
 
 /// Returns (branch_name, is_new_branch, from_ref)
@@ -147,15 +152,19 @@ fn derive_short_name(branch: &str) -> String {
     branch.rsplit('/').next().unwrap_or(branch).to_string()
 }
 
-pub fn populate_agents(
+/// Links or copies the selected entries (agent files, env files, ...) from
+/// `entries` into `dest`. `kind` is just a noun for messages ("agent", "env").
+pub fn populate_entries(
     cfg: &Config,
     dest: &PathBuf,
-    agents_arg: &Option<Vec<String>>,
+    entries: &[AgentEntry],
+    kind: &str,
+    selected_arg: &Option<Vec<String>>,
     yes: bool,
     copy: bool,
     link: bool,
 ) {
-    let selected = select_agents(cfg, agents_arg, yes);
+    let selected = select_entries(entries, kind, selected_arg, yes);
     if selected.is_empty() {
         return;
     }
@@ -168,26 +177,40 @@ pub fn populate_agents(
         cfg.link_mode
     };
 
-    for agent in selected {
-        let source = config::expand_tilde(&agent.source);
+    for entry in selected {
+        let source = config::expand_tilde(&entry.source);
         let source = match fs::canonicalize(&source) {
             Ok(p) => p,
             Err(e) => {
                 eprintln!(
-                    "warning: skipping agent '{}': cannot read source {}: {e}",
-                    agent.name,
+                    "warning: skipping {kind} '{}': cannot read source {}: {e}",
+                    entry.name,
                     source.display()
                 );
                 continue;
             }
         };
-        let target_path = dest.join(&agent.target);
+        let target_path = dest.join(&entry.target);
         if let Some(parent) = target_path.parent() {
             if let Err(e) = fs::create_dir_all(parent) {
                 eprintln!(
-                    "warning: skipping agent '{}': cannot create {}: {e}",
-                    agent.name,
+                    "warning: skipping {kind} '{}': cannot create {}: {e}",
+                    entry.name,
                     parent.display()
+                );
+                continue;
+            }
+        }
+        // Remove any existing entry (stale symlink or old copy) first. Writing a
+        // copy straight onto an existing symlink would follow it and overwrite
+        // whatever it points at — e.g. the real source file, if re-running this
+        // after a previous symlink run.
+        if target_path.symlink_metadata().is_ok() {
+            if let Err(e) = fs::remove_file(&target_path) {
+                eprintln!(
+                    "warning: skipping {kind} '{}': cannot replace existing {}: {e}",
+                    entry.name,
+                    target_path.display()
                 );
                 continue;
             }
@@ -203,31 +226,36 @@ pub fn populate_agents(
                     LinkMode::Symlink => "linked",
                     LinkMode::Copy => "copied",
                 },
-                agent.name,
+                entry.name,
                 target_path.display()
             ),
-            Err(e) => eprintln!("warning: failed to set up agent '{}': {e}", agent.name),
+            Err(e) => eprintln!("warning: failed to set up {kind} '{}': {e}", entry.name),
         }
     }
 }
 
-fn select_agents(cfg: &Config, agents_arg: &Option<Vec<String>>, yes: bool) -> Vec<AgentEntry> {
-    if cfg.agents.is_empty() {
+fn select_entries(
+    entries: &[AgentEntry],
+    kind: &str,
+    selected_arg: &Option<Vec<String>>,
+    yes: bool,
+) -> Vec<AgentEntry> {
+    if entries.is_empty() {
         return Vec::new();
     }
 
-    if let Some(names) = agents_arg {
+    if let Some(names) = selected_arg {
         if names.iter().any(|n| n.eq_ignore_ascii_case("none")) {
             return Vec::new();
         }
         if names.iter().any(|n| n.eq_ignore_ascii_case("all")) {
-            return cfg.agents.clone();
+            return entries.to_vec();
         }
         let mut out = Vec::new();
         for n in names {
-            match cfg.agents.iter().find(|a| &a.name == n) {
+            match entries.iter().find(|a| &a.name == n) {
                 Some(a) => out.push(a.clone()),
-                None => eprintln!("warning: no configured agent named '{n}', skipping"),
+                None => eprintln!("warning: no configured {kind} named '{n}', skipping"),
             }
         }
         return out;
@@ -237,11 +265,13 @@ fn select_agents(cfg: &Config, agents_arg: &Option<Vec<String>>, yes: bool) -> V
         return Vec::new();
     }
 
-    let labels: Vec<String> = cfg
-        .agents
+    let labels: Vec<String> = entries
         .iter()
         .map(|a| format!("{} ({})", a.name, a.target))
         .collect();
-    let picks = prompt::multi_select("\nWhich agent files should this worktree get?", &labels);
-    picks.into_iter().map(|i| cfg.agents[i].clone()).collect()
+    let picks = prompt::multi_select(
+        &format!("\nWhich {kind} files should this worktree get?"),
+        &labels,
+    );
+    picks.into_iter().map(|i| entries[i].clone()).collect()
 }
